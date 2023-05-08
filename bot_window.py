@@ -12,6 +12,11 @@ import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QComboBox
 from binance.client import Client
 
+"""
+читаем API для биржи, у вас этот API позволяет только смотреть инфо с биржи а не торговать
+иначе деньги случайно сольются на чтото
+"""
+
 #with open('API.txt') as f:
 with open('API_2.txt') as f:
     keys = {}
@@ -25,12 +30,20 @@ client = Client(api_key, api_secret)
 
 client = Client(api_key, api_secret)
 
+"""
+пишем логи в файл
+"""
+
 def log(message):
     now = datetime.datetime.now()
     timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
     with open("log.txt", "a") as f:
         f.write(f"{timestamp}: {message}\n")
 
+
+"""
+наш интерфейс с 3 вкладками
+"""
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -52,6 +65,10 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(tab_widget)
 
         self.show()
+
+    """
+    0 вкладка с инфо
+    """
 
     def create_tab0(self):
         # Create widget for Tab 0
@@ -96,6 +113,11 @@ class MainWindow(QMainWindow):
         version = QLabel("Version 1.0", tab0)
         version.setGeometry(50, 350, 200, 20)
         return tab0
+
+    """
+    вкладка 1 позволяет на споте покупать и продавать крипту за USDT,
+    потыкайте интерфейс
+    """
 
     def create_tab1(self):
         # Create widget for Tab 1
@@ -148,25 +170,34 @@ class MainWindow(QMainWindow):
 
         return tab1
 
-
-
+    """
+    выбор крипты
+    """
     def fill_currency_combo(self):
         popular_currencies = ['BTC', 'ETH', 'BNB', 'ADA', 'DOGE', 'XRP', 'DOT', 'UNI', 'SOL', 'LTC']
         for currency in popular_currencies:
             self.currencyCombo.addItem(currency)
 
+    """
+        выбор в чем указывать объем  100 долларов или 0.01 биток
+        """
     def fill_usdt_or_btc(self):
         self.usdt_or_btc.addItem("USDT")
         self.usdt_or_btc.addItem("BTC")
 
+    """
+        это обновление кнопки дающей выбор доллар или монета,
+        потыкайте, поймете
+        """
     def update_usdt_or_btc(self):
         self.usdt_or_btc.clear()
         self.usdt_or_btc.addItem("USDT")
         selected_currency = self.currencyCombo.currentText()
         self.usdt_or_btc.addItem(selected_currency)
 
-
-
+    """
+        исходя из колво долларов вычисляем объем монеты крипты
+        """
     def get_btc_amount(self,symbol: str, usdt_amount: float) -> float:
         ticker = client.get_ticker(symbol=symbol)
         btc_price = float(ticker['lastPrice'])
@@ -174,7 +205,12 @@ class MainWindow(QMainWindow):
         rounded_number = math.ceil(btc_amount * 1000) / 1000  # округляем до 3 знаков после запятой
         return rounded_number
 
-
+    """
+        наш ордер на покупку или продажу
+        включает название валютной пары
+        сторону контракта = купить или продать
+        и объем сделки
+        """
     def market_order(self, symbol, side, quantity):
         print("order  ",symbol, side, quantity)
         """
@@ -203,6 +239,11 @@ class MainWindow(QMainWindow):
 
         #return order
 
+    """
+        общая функция вызывающая заключение контракта, 
+        считывает параметры из кнопок
+        """
+
     def execute_trade(self):
         try:
             action = self.actionCombo.currentText().lower()
@@ -227,6 +268,12 @@ class MainWindow(QMainWindow):
 
         return tab2
 
+    """
+        эта страница вызывает бота для стратегии
+        бот в другом файле
+        здесь нам нужен уровень риска
+        а так же коэффициенты для стопов и тейк профитов (погуглите)
+        """
     def create_tab3(self):
         # Create widget for Tab 3
         tab3 = QWidget()
@@ -265,6 +312,11 @@ class MainWindow(QMainWindow):
         description2.setGeometry(20, 200, description2.sizeHint().width(), description2.sizeHint().height())
 
         return tab3
+
+    """
+        функция проверяет корректность данных
+        и вызывает бота из другого файла
+        """
 
     def start_bot(self):
         # Get user input from Tab 3
