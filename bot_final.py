@@ -5,13 +5,19 @@ from binance.client import Client
 
 import time
 import datetime
+
+"""
+логи
+"""
 def log(message):
     now = datetime.datetime.now()
     timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
     with open("log_bot.txt", "a") as f:
         f.write(f"{timestamp}: {message}\n")
 
-
+"""
+запрашиваем баланс фьючерсного аккаунта в долларах
+"""
 def get_balance(client):
     try:
         balance = client.futures_account_balance()
@@ -24,7 +30,10 @@ def get_balance(client):
     except:
         print()
 
-
+"""
+вычисляет среднее арифметическое размера свечей
+нужно для стопов и тейков
+"""
 def get_candle_size(klines):
     candle_sizes = []
     for candle in klines:
@@ -35,7 +44,10 @@ def get_candle_size(klines):
     return sum(candle_sizes) / len(candle_sizes)
 
 
-
+"""
+закрывает все открытые позиции путем выставления противоположных
+если было куплено 0.001 битка на фьючерсах, то продает 0.001
+"""
 def close_all_positions(client):
     try:
         # Get current open positions
@@ -55,7 +67,11 @@ def close_all_positions(client):
                                             quantity=abs(float(position['positionAmt'])))
     except:
         print(f"Error occurred: ")
+"""
+закрывает все ордера (ордер это пока не открытая позиция)
 
+в нашем случае закрывает ранее открытые стопы и тейки
+"""
 def close_all_orders_and_positions(client):
     try:
         client.futures_cancel_all_open_orders(symbol='BTCUSDT')
@@ -63,13 +79,20 @@ def close_all_orders_and_positions(client):
     except :
         print(f"Error occurred while closing orders/positions: ")
 
+"""
+вычисляет колво битка по колву долларов
+"""
 def get_btc_amount(client,symbol: str, usdt_amount: float) -> float:
     ticker = client.get_ticker(symbol=symbol)
     btc_price = float(ticker['lastPrice'])
     btc_amount = usdt_amount / btc_price
     rounded_number = math.ceil(btc_amount * 1000) / 1000  # округляем до 3 знаков после запятой
     return rounded_number
+"""
+открывает стопы и тейки для открытой позиции
 
+
+"""
 def open_take_stop(client,side,position,take,stop):
     ticker = client.futures_symbol_ticker(symbol="BTCUSDT")
     current_price = float(ticker['price'])
@@ -125,12 +148,21 @@ def open_take_stop(client,side,position,take,stop):
 
     #return FuturesTakeProfit
 
+"""
+открывает саму нашу позицию
+"""
+
 def open_market_order_last_candle(client,klines,proc,take,stop):
+    """
+    вычисляем объем битка
+    """
 
     position = get_btc_amount(client,'BTCUSDT', get_balance(client)*proc)
     if position < 0.001: position = 0.001
 
-    # Получаем значения OHLCV последней свечи
+    """
+    смотрим на последнюю свечу, не считая текущей
+    """
     last_candle = klines[-2]
     open_price = float(last_candle[1])
     close_price = float(last_candle[4])
@@ -142,7 +174,9 @@ def open_market_order_last_candle(client,klines,proc,take,stop):
         side = 'BUY'
     # Открываем рыночный ордер
     symbol = 'BTCUSDT'
-
+    """
+    открываем ордер
+    """
     try:
         order = client.futures_create_order(symbol='BTCUSDT', type='MARKET', side=side, quantity=position)
         if order:
@@ -165,11 +199,23 @@ def open_market_order_last_candle(client,klines,proc,take,stop):
 
     return order
 
+
+"""
+основная функция, принимает api, процент риска и коэфы для стопов и тейков
+"""
 def create_bot(api_key,api_secret, proc, t,s):
     print("bot in work")
+    """
+    инициация связи с биржей
+    """
     client = Client(api_key, api_secret)
+    """
+    запрос инфы по 10 часовым свечам
+    """
     klines = client.futures_historical_klines("BTCUSDT", Client.KLINE_INTERVAL_1HOUR, "10 HOUR ago UTC")
-
+    """
+    вычисление стопов и тейков
+    """
     take = get_candle_size(klines) * t
     stop = get_candle_size(klines) * s
 
@@ -178,10 +224,19 @@ def create_bot(api_key,api_secret, proc, t,s):
     while True:
         time.sleep(1)
         now = datetime.datetime.now()
-        if now.minute >= 0 and now.minute <= 59:
+        """
+        бот открывает сделку в начале каждого часа а потом спит
+        """
+        if now.minute >= 0 and now.minute <= 5:
             try:
+                """
+                закрываем ордера и позиции
+                """
                 close_all_orders_and_positions(client)
                 close_all_positions(client)
+                """
+                открываем новый ордер
+                """
                 order = open_market_order_last_candle(client,klines, proc, take, stop)
 
                 if order:
