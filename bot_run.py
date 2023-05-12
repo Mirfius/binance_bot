@@ -239,7 +239,31 @@ def create_bot(api_key,api_secret, proc, t,s):
 
     # close_all_orders_and_positions()
     # close_all_positions()
-    while True:
+    time.sleep(1)
+    now = datetime.datetime.now()
+    """
+    бот открывает сделку в начале каждого часа а потом спит
+    """
+    if now.minute >= 0 and now.minute <= 61:
+        try:
+            """
+            закрываем ордера и позиции
+            """
+            close_all_orders_and_positions(client)
+            close_all_positions(client)
+            """
+            открываем новый ордер
+            """
+            order = open_market_order_last_candle(client, klines, proc, take, stop)
+
+            if order:
+                QMessageBox.information("Bot Started", "The bot has been started successfully.")
+                log("Bot Started The bot has been started successfully.\n")
+
+
+        except:
+            QMessageBox.warning("Ошибка в стратегии не исполнен")
+    while False:
         time.sleep(1)
         now = datetime.datetime.now()
         """
@@ -807,11 +831,15 @@ class MainWindow(QMainWindow):
             # создаем новый поток для запуска функции my_function
             #create_bot(api_key,api_secret, risk_percent, take_profit,stop_loss)
 
-            freeze_support()
-            print("Processes started")
-            p = Process(target=create_bot, args=(api_key,api_secret, risk_percent, take_profit,stop_loss))
-            p.start()
-            print("Processes ended")
+            #freeze_support()
+            #print("Processes started")
+            #p = Process(target=create_bot, args=(api_key,api_secret, risk_percent, take_profit,stop_loss))
+            #p.start()
+            #print("Processes ended")
+            try:
+                create_bot(api_key,api_secret, risk_percent, take_profit,stop_loss)
+            except:
+                print("бот не запустился")
 
 
         except ValueError as e:
