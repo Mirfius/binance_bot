@@ -8,6 +8,8 @@ from PyQt5.QtWidgets import*
 from binance.client import Client
 from bot_final import*
 import threading
+from multiprocessing import Process, freeze_support
+import requests
 
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QComboBox
@@ -46,10 +48,11 @@ class MainWindow(QMainWindow):
         # Create tab widget and add tabs
         tab_widget = QTabWidget()
         tab_widget.addTab(self.create_tab0(), "Инфо")
-
+        tab_widget.addTab(self.create_tab2(), "Получить цену")
         tab_widget.addTab(self.create_tab1(), "Маркет")
         tab_widget.addTab(self.create_tab4(), "Лимит")
         tab_widget.addTab(self.create_tab3(), "Стратегия")
+        tab_widget.addTab(self.create_tab5(), "Деньги")
 
 
 
@@ -189,8 +192,6 @@ class MainWindow(QMainWindow):
         selected_currency = self.currencyCombo.currentText()
         self.usdt_or_btc.addItem(selected_currency)
 
-
-
     def get_btc_amount(self,symbol: str, usdt_amount: float) -> float:
         ticker = client.get_ticker(symbol=symbol)
         btc_price = float(ticker['lastPrice'])
@@ -245,12 +246,68 @@ class MainWindow(QMainWindow):
 
 
     def create_tab2(self):
-        # Create widget for Tab 2
         tab2 = QWidget()
 
-        # Add widgets and layout for Tab 2 as desired
+        background = QPixmap("bac1.jpg")
+        background_label = QLabel(tab2)
+        background_label.setPixmap(background)
+        background_label.resize(background.width(), background.height())
 
+        title = QLabel("Получить актуальную цену", tab2)
+        title.setFont(QFont("Arial", 18, QFont.Bold))
+        title.adjustSize()
+        title.setGeometry(100, 10, title.sizeHint().width() , title.sizeHint().height())
+        title.setAlignment(Qt.AlignCenter)
+
+        # Create label for "Select currency:"
+        self.labelt2 = QLabel('Select currency:', tab2)
+        self.labelt2.setGeometry(20, 70, 100, 20)
+
+        # создаем виджет для выбора криптовалюты
+        self.currencyCombot2 = QComboBox(tab2)
+        self.fill_currency_combot2()
+        self.currencyCombot2.setGeometry(20, 90, 100, 20)
+
+        # добавьте другие криптовалюты по вашему желанию
+
+
+
+        # Create button for executing the trade
+        self.buttont2 = QPushButton('Получить', tab2)
+        self.buttont2.setGeometry(20, 120, 100, 20)
+        self.buttont2.clicked.connect(self.execute_t2)
+
+        self.amount_field = QLineEdit(tab2)
+        self.amount_field.setGeometry(20, 150, 250, 20)
+
+        # устанавливаем созданный макет на вторую вкладку
+        tab2.setLayout(QVBoxLayout())
         return tab2
+
+    def fill_currency_combot2(self):
+        popular_currencies = ['BTC', 'ETH', 'BNB', 'ADA', 'DOGE', 'XRP', 'DOT', 'UNI', 'SOL', 'LTC']
+        for currency in popular_currencies:
+            self.currencyCombot2.addItem(currency)
+    def get_current_price(self, symbol):
+        # получаем данные о текущей цене выбранной криптовалюты
+
+        ticker = client.get_ticker(symbol=symbol)
+        price = ticker['lastPrice']
+
+        # выводим текущую цену на метке
+        self.amount_field.setText(f"Текущая цена: {price} USDT")
+
+    def execute_t2(self):
+        try:
+
+            currency = self.currencyCombot2.currentText()
+            currency += "USDT"
+            self.get_current_price(currency)
+
+
+        except:
+            log(f"ошибка в запросе ордера\n")
+            QMessageBox.warning(self, "Ошибка", f"ошибка в запросе ордера")
 
     def create_tab4(self):
         # Create widget for Tab 1
@@ -425,7 +482,7 @@ class MainWindow(QMainWindow):
         title.setAlignment(Qt.AlignCenter)
 
         label = QLabel(tab3)
-        pixmap = QPixmap('bac3.jpg')
+        pixmap = QPixmap('bac4.png')
         label.setPixmap(pixmap)
         label.setGeometry(450, 50, pixmap.width(), pixmap.height())
 
@@ -491,12 +548,61 @@ class MainWindow(QMainWindow):
 
 
             # создаем новый поток для запуска функции my_function
-            thread = threading.Thread(target=create_bot(api_key,api_secret, risk_percent, take_profit,stop_loss))
-            thread.start()
+            #create_bot(api_key,api_secret, risk_percent, take_profit,stop_loss)
+
+            freeze_support()
+            print("Processes started")
+            p = Process(target=create_bot, args=(api_key,api_secret, risk_percent, take_profit,stop_loss))
+            p.start()
+            print("Processes ended")
 
 
         except ValueError as e:
             QMessageBox.critical(self, "Error", str(e))
+
+    def create_tab5(self):
+        # Create widget for Tab 0
+        tab5 = QWidget()
+
+        # Add background image
+        background = QPixmap("bac1.jpg")
+        background_label = QLabel(tab5)
+        background_label.setPixmap(background)
+        background_label.resize(background.width(), background.height())
+
+        # Create labels with information
+        title = QLabel("Хотите получить больше прибыли?", tab5)
+        title.setFont(QFont("Arial", 18, QFont.Bold))
+        title.adjustSize()
+        title.setGeometry(150, 10, title.sizeHint().width(),title.sizeHint().height())
+        title.setAlignment(Qt.AlignCenter)
+
+
+        description = QLabel("И так, вы уже убедились в качественной работе нашего бота\n"
+                             "Хотите начать зарабатывать на binans?\n"
+                             "Наша команда готова вам помочь\n"
+                             "Просто свяжитесь с нашим специалистом\n", tab5)
+
+        description.adjustSize()
+
+        description.setFont(QFont("Arial", 12))
+        description.setGeometry(50, 80, description.sizeHint().width(), description.sizeHint().height())
+
+
+
+        description2 = QLabel("email: matrixsiv2@yandex.ru\n"
+                             "Telegram: @morfius_21\n", tab5)
+
+        description2.adjustSize()
+        # description.setAlignment(Qt.AlignCenter)
+        description2.setFont(QFont("Arial", 12))
+        description2.setGeometry(50, 200, description2.sizeHint().width(), description2.sizeHint().height())
+
+
+        author = QLabel("Не упусти свой шанс!!!!!!!", tab5)
+        author.setGeometry(50, 330, 600, 20)
+
+        return tab5
 
 
 if __name__ == '__main__':
